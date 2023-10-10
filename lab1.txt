@@ -1,0 +1,75 @@
+CREATE TABLE regions(
+region_id INT PRIMARY KEY,
+region_name VARCHAR(250));
+
+CREATE TABLE countries(
+country_id INT PRIMARY KEY,
+country_name VARCHAR(250),
+region_id INT,
+CONSTRAINT fk_region_name FOREIGN KEY (region_id) REFERENCES regions(region_id)
+);
+
+create table locations(
+location_id INT PRIMARY KEY,
+street_address VARCHAR(250),
+postal_code VARCHAR(250),
+city VARCHAR(250),
+state_province VARCHAR(250),
+country_id INT,
+CONSTRAINT fk_country_id FOREIGN KEY (country_id) REFERENCES countries(country_id)
+);
+
+create table departments(
+department_id INT PRIMARY KEY,
+department_name VARCHAR(250),
+manager_id INT,
+location_id INT,
+CONSTRAINT fk_location_id FOREIGN KEY (location_id) REFERENCES locations(location_id),
+CONSTRAINT fk_manager_id FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+create table jobs(
+job_id INT PRIMARY KEY,
+min_salary NUMBER(2,2),
+max_salary NUMBER(2,2)
+);
+
+create table job_history(
+employee_id INT,
+start_date DATE,
+end_date DATE,
+job_id INT,
+department_id INT,
+CONSTRAINT pk_emp_date primary key (employee_id, start_date)
+);
+
+create table employees(
+employee_id INT PRIMARY KEY,
+first_name VARCHAR(250),
+last_name VARCHAR(250),
+email VARCHAR(250),
+phone_number VARCHAR(250),
+hire_date DATE,
+job_id INT,
+salary NUMBER(2,2),
+commission_pct NUMBER(2,2),
+manager_id INT,
+department_id INT
+);
+
+alter table employees add
+CONSTRAINT fk_manager_emp_id FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
+
+alter table employees add
+CONSTRAINT fk_job_emp_id FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+
+alter table employees add
+CONSTRAINT fk_department_emp_id FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+alter table job_history add
+CONSTRAINT fk_department_job_id FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+alter table job_history add FOREIGN KEY (employee_id) REFERENCES employees(employee_id);
+
+alter table jobs
+add check (min_salary+2000 = max_salary);
