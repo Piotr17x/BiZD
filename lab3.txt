@@ -1,0 +1,130 @@
+DROP TABLE jobs CASCADE CONSTRAINTS;
+DROP TABLE locations CASCADE CONSTRAINTS;
+DROP TABLE regions CASCADE CONSTRAINTS;
+DROP TABLE countries CASCADE CONSTRAINTS;
+DROP TABLE departments CASCADE CONSTRAINTS;
+DROP TABLE employees CASCADE CONSTRAINTS;
+DROP TABLE job_history CASCADE CONSTRAINTS;
+DROP TABLE job_grades CASCADE CONSTRAINTS;
+
+CREATE TABLE jobs AS SELECT * FROM HR.jobs;
+CREATE TABLE locations AS SELECT * FROM HR.locations;
+CREATE TABLE countries AS SELECT * FROM HR.countries;
+CREATE TABLE job_history AS SELECT * FROM HR.job_history;
+CREATE TABLE departments AS SELECT * FROM HR.departments;
+CREATE TABLE employees AS SELECT * FROM HR.employees;
+CREATE TABLE job_grades AS SELECT * FROM HR.job_grades;
+CREATE TABLE regions AS SELECT * FROM HR.regions;
+
+--INSERT INTO locations SELECT * FROM HR.locations;
+--INSERT INTO jobs SELECT * FROM HR.jobs;
+--INSERT INTO countries SELECT * FROM HR.countries;
+--INSERT INTO job_history SELECT * FROM HR.job_history;
+--INSERT INTO departments SELECT * FROM HR.departments;
+--INSERT INTO employees SELECT * FROM HR.employees;
+--INSERT INTO job_grades SELECT * FROM HR.job_grades;
+--INSERT INTO regions SELECT * FROM HR.regions;
+
+ALTER TABLE countries ADD PRIMARY KEY(country_id);
+
+ALTER TABLE departments ADD PRIMARY KEY(department_id);
+    
+ALTER TABLE employees ADD PRIMARY KEY(employee_id);
+    
+ALTER TABLE job_grades ADD PRIMARY KEY(grade);
+
+ALTER TABLE job_history ADD PRIMARY KEY (employee_id,start_date);
+
+ALTER TABLE jobs ADD PRIMARY KEY(job_id);
+    
+ALTER TABLE locations ADD PRIMARY KEY(location_id);
+    
+ALTER TABLE regions ADD PRIMARY KEY(region_id);
+
+ALTER TABLE countries ADD FOREIGN KEY (region_id) REFERENCES regions(region_id); 
+
+ALTER TABLE job_history ADD FOREIGN KEY (employee_id) REFERENCES employees(employee_id); 
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id); 
+
+ALTER TABLE employees ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id); 
+
+ALTER TABLE departments ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id); 
+
+ALTER TABLE departments ADD FOREIGN KEY (location_id) REFERENCES locations(location_id); 
+
+ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id); 
+
+ALTER TABLE job_history ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+
+ALTER TABLE job_history ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+ALTER TABLE locations ADD FOREIGN KEY (country_id) REFERENCES countries(country_id);
+
+
+SELECT last_name ||' '|| salary "WYNAGRODZENIE"
+    FROM employees
+    WHERE department_id = 20 OR department_id = 50
+    AND salary BETWEEN 2000 AND 7000
+    ORDER BY last_name;
+
+
+SELECT hire_date, last_name, &podaj_kolumnę
+    FROM employees
+    WHERE manager_id IS NOT NULL
+    AND EXTRACT (YEAR FROM hire_date) = 2005
+    ORDER BY &podaj_kolumnę_sort;
+    
+
+SELECT first_name||' '||last_name "IMIE_I_NAZWISKO", salary, phone_number
+    FROM employees
+    WHERE SUBSTR(last_name, 3 , 1) = 'e'
+    AND first_name LIKE '%&podaj_część_imienia%'
+    ORDER BY 1 DESC, 2;
+
+
+SELECT first_name, last_name, round(months_between(CURRENT_DATE, hire_date)) "PRZEPRACOWANE_MIESIACE",
+    CASE
+        WHEN round(months_between(CURRENT_DATE, hire_date)) < 150 THEN salary*0.1
+        WHEN round(months_between(CURRENT_DATE, hire_date)) >= 150 AND round(months_between(CURRENT_DATE, hire_date)) <=200 THEN salary*0.2
+        ELSE salary*0.3
+    END "wysokosc_dodatku"
+    FROM employees
+    ORDER BY "PRZEPRACOWANE_MIESIACE";
+
+
+SELECT d.department_name, SUM(e.salary) "SUM_SALARY", round(AVG(e.salary)) "AVG_SALARY"
+    FROM departments d JOIN employees e ON d.department_id = e.department_id
+    GROUP BY d.department_name
+    HAVING MIN(e.salary)>5000;
+    
+    
+SELECT e.last_name, d.department_id, d.department_name, j.job_id
+    from employees e JOIN departments d ON d.department_id = e.department_id JOIN jobs j ON e.job_id = j.job_id JOIN locations l ON l.location_id = d.location_id
+    WHERE l.city='Toronto';
+    
+
+SELECT e.last_name, e.first_name
+    FROM employees e
+    Where e.first_name='Jennifer' or e.department_id in (select e.department_id from employees e Where e.first_name='Jennifer');
+    
+    
+Select d.department_name
+    from departments d left join employees e on e.department_id = d.department_id
+    group by d.department_name
+    HAVING count(e.department_id) = 0;
+    
+
+SELECT e.first_name||' '||e.last_name "IMIE_I_NAZWISKO", j.job_id, d.department_name, e.salary, jg.grade
+    from employees e join departments d on e.department_id = d.department_id join jobs j on j.job_id = e.job_id join job_grades jg on e.salary between jg.min_salary and jg.max_salary;
+    
+    
+select e.first_name||' '||e.last_name "IMIE_I_NAZWISKO", e.salary
+    from employees e
+    where (select AVG(e.salary) from employees e) < e.salary
+    order by e.salary desc;
+    
+
+select e.employee_id, e.first_name||' '||e.last_name "IMIE_I_NAZWISKO"
+    from employees e
+    where e.department_id in (select e.department_id from employees e where e.last_name like '%u%');
