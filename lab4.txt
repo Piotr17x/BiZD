@@ -1,0 +1,13 @@
+DECLARE 
+   CURSOR d is select department_id from departments; 
+   TYPE department IS TABLE OF NUMBER INDEX BY VARCHAR2(20); 
+   dep_list department; 
+   i int := 0;
+BEGIN
+    for n in d loop
+        dep_list(i) := n.department_id;
+        dbms_output.put_line('Department: ' || dep_list(i));
+        i:=i+1;
+        exit when i>9;
+    end loop;
+end;
