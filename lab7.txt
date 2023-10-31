@@ -1,0 +1,151 @@
+CREATE OR REPLACE FUNCTION get_job_name(
+    jobid jobs.job_id%TYPE
+)
+return varchar
+is
+    v_job_name jobs.job_title%TYPE;
+begin
+    select job_title into v_job_name from jobs where job_id = jobid;
+    return v_job_name;
+exception
+    when NO_DATA_FOUND then
+        DBMS_OUTPUT.PUT_LINE('Brak pracy z danym id');
+end;
+
+
+CREATE OR REPLACE FUNCTION get_yearly_salary(
+    empid employees.employee_id%TYPE
+)
+return number
+is
+    yearly_salary number;
+    cpct employees.commission_pct%type;
+begin
+    select salary, commission_pct into yearly_salary, cpct from employees where employee_id = empid;
+    if cpct != null then
+        yearly_salary := yearly_salary*12+yearly_salary*cpct;
+    else
+        yearly_salary := yearly_salary*12;
+    end if;
+    return yearly_salary;
+exception
+    when NO_DATA_FOUND then
+        DBMS_OUTPUT.PUT_LINE('Brak pracownika z danym id');
+end;
+
+
+CREATE OR REPLACE FUNCTION reformat_number(
+    p_numb varchar
+)
+return varchar
+is
+    formated_numb varchar(20);
+begin
+    formated_numb := '(' || substr(p_numb, 1, 3) || ')' || substr(p_numb, 4, 12);
+    return formated_numb;
+end;
+
+
+CREATE OR REPLACE FUNCTION cap_str(
+    str varchar
+)
+return varchar
+is
+    r_str varchar(50);
+begin
+    r_str := upper(substr(str, 1, 1))||lower(substr(str, 2, length(str)-2))||upper(substr(str, -1, 1));
+    return r_str;
+end;
+
+
+CREATE OR REPLACE FUNCTION get_date(
+    pesel number
+)
+return date
+is
+    r_date date;
+    r_pesel varchar(20);
+begin
+    r_pesel := to_char(pesel);
+    r_pesel := substr(r_pesel, 1,2)||'-'||substr(r_pesel, 3,2)||'-'||substr(r_pesel, 5,2);
+    if pesel > 24000000000 then
+        r_pesel := '19'||r_pesel;
+    else
+        r_pesel := '20'||r_pesel;
+    end if;
+    r_date := to_date(r_pesel,'yyyy-MM-DD');
+    return r_date;
+end;
+
+
+CREATE OR REPLACE FUNCTION get_data(
+    v_country_name varchar
+)
+return varchar
+is  
+    country number;
+    emp_numb number;
+    dep_numb number;
+begin
+    select count(*) into country from countries where country_name = v_country_name;
+    if country = 0 then
+        raise NO_DATA_FOUND;
+    end if;
+    select count(d.department_id) into dep_numb
+        from departments d 
+        left join locations l on d.location_id = l.location_id 
+        left join countries c on c.country_id=l.country_id
+        where c.country_name = v_country_name;
+    select count(d.department_id) into emp_numb
+        from employees e
+        left join departments d on e.department_id = d.department_id
+        left join locations l on d.location_id = l.location_id 
+        left join countries c on c.country_id=l.country_id
+        where c.country_name = v_country_name;
+    return dep_numb||' i '||emp_numb;
+exception
+    when NO_DATA_FOUND then
+        DBMS_OUTPUT.PUT_LINE('Brak kraju o takiej nazwie');
+end;
+
+begin
+    DBMS_OUTPUT.PUT_LINE( get_job_name('AD_VP'));
+    DBMS_OUTPUT.PUT_LINE( get_yearly_salary(145));
+    DBMS_OUTPUT.PUT_LINE( reformat_number('+12111222333'));
+    DBMS_OUTPUT.PUT_LINE( cap_str('aSDFg'));
+    DBMS_OUTPUT.PUT_LINE( to_char(get_date(22091804656),'yyyy-mm-dd'));
+    DBMS_OUTPUT.PUT_LINE( get_data('United States of America'));
+end;
+
+CREATE TABLE archiwum_departamentów (ids number, nazwa varchar(50), data_zamknięcia date, ostatni_manager varchar(50));
+drop table archiwum_departamentów;
+delete from archiwum_departamentów;
+
+insert into departments (department_id, department_name, manager_id) values (2, '213', 102);
+
+Create or replace TRIGGER archive_departments
+    after delete
+    on departments
+    for each row
+begin
+    insert into archiwum_departamentów (ids, nazwa, data_zamknięcia, ostatni_manager)
+    values (:old.department_id, :old.department_name, CURRENT_DATE, (select first_name||' '|| last_name from employees where employee_id = :old.manager_id));
+end;
+delete from departments where department_id = 2;
+
+--!!!
+CREATE TABLE złodziej (ids number GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1), user_ varchar(50), czas_zmiany timestamp);
+Create or replace TRIGGER detect_thief
+    before insert or update
+    on employees
+    for each row
+DECLARE
+    PRAGMA AUTONOMOUS_TRANSACTION;
+begin
+    if 2000 > :new.salary or :new.salary > 26000 then
+        insert into złodziej (user_, czas_zmiany) values ((select user from dual), current_timestamp);
+        commit;
+        raise_application_error(-20000, 'niepoprawne zarobki');
+    end if;
+end;
+update employees set salary = 28000 where employee_id = 208;
