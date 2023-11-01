@@ -149,3 +149,47 @@ begin
     end if;
 end;
 update employees set salary = 28000 where employee_id = 208;
+
+
+begin
+declare
+seqval number;
+begin
+    select max(employee_id)+1 into seqval from employees;
+    execute immediate('CREATE SEQUENCE employee_id_seq INCREMENT BY 1 START WITH '||seqval||' nocycle cache 20');
+end;
+end;
+
+
+CREATE OR REPLACE TRIGGER employees_id_trigger
+BEFORE INSERT ON employees
+FOR EACH ROW
+BEGIN
+    SELECT employee_id_seq.NEXTVAL INTO :NEW.employee_id FROM dual;
+END;
+
+insert into employees (salary, last_name, email, hire_date, job_id) VALUES (20000, 'Kowalski', 'kowalski@wp.pl', CURRENT_DATE, 'AD_VP');
+
+Create or replace TRIGGER defend_job_grades
+    before insert or update or delete
+    on job_grades
+    for each row
+
+begin
+    raise_application_error(-20000, 'Tabela nie jest modyfikowalna');
+end;
+
+delete from job_grades where rownum = 1;
+
+
+CREATE OR REPLACE TRIGGER jobs_salary
+BEFORE update ON jobs
+FOR EACH ROW
+BEGIN
+    SELECT :old.min_salary, :old.max_salary INTO :new.min_salary, :new.max_salary FROM dual;
+END;
+
+update jobs
+    set min_salary = 20,
+    max_salary = 202
+    where rownum = 1
