@@ -1,130 +1,120 @@
-DROP TABLE jobs CASCADE CONSTRAINTS;
-DROP TABLE locations CASCADE CONSTRAINTS;
-DROP TABLE regions CASCADE CONSTRAINTS;
-DROP TABLE countries CASCADE CONSTRAINTS;
-DROP TABLE departments CASCADE CONSTRAINTS;
-DROP TABLE employees CASCADE CONSTRAINTS;
-DROP TABLE job_history CASCADE CONSTRAINTS;
-DROP TABLE job_grades CASCADE CONSTRAINTS;
-
-CREATE TABLE jobs AS SELECT * FROM HR.jobs;
-CREATE TABLE locations AS SELECT * FROM HR.locations;
-CREATE TABLE countries AS SELECT * FROM HR.countries;
-CREATE TABLE job_history AS SELECT * FROM HR.job_history;
-CREATE TABLE departments AS SELECT * FROM HR.departments;
-CREATE TABLE employees AS SELECT * FROM HR.employees;
-CREATE TABLE job_grades AS SELECT * FROM HR.job_grades;
-CREATE TABLE regions AS SELECT * FROM HR.regions;
-
---INSERT INTO locations SELECT * FROM HR.locations;
---INSERT INTO jobs SELECT * FROM HR.jobs;
---INSERT INTO countries SELECT * FROM HR.countries;
---INSERT INTO job_history SELECT * FROM HR.job_history;
---INSERT INTO departments SELECT * FROM HR.departments;
---INSERT INTO employees SELECT * FROM HR.employees;
---INSERT INTO job_grades SELECT * FROM HR.job_grades;
---INSERT INTO regions SELECT * FROM HR.regions;
-
-ALTER TABLE countries ADD PRIMARY KEY(country_id);
-
-ALTER TABLE departments ADD PRIMARY KEY(department_id);
-    
-ALTER TABLE employees ADD PRIMARY KEY(employee_id);
-    
-ALTER TABLE job_grades ADD PRIMARY KEY(grade);
-
-ALTER TABLE job_history ADD PRIMARY KEY (employee_id,start_date);
-
-ALTER TABLE jobs ADD PRIMARY KEY(job_id);
-    
-ALTER TABLE locations ADD PRIMARY KEY(location_id);
-    
-ALTER TABLE regions ADD PRIMARY KEY(region_id);
-
-ALTER TABLE countries ADD FOREIGN KEY (region_id) REFERENCES regions(region_id); 
-
-ALTER TABLE job_history ADD FOREIGN KEY (employee_id) REFERENCES employees(employee_id); 
-
-ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id); 
-
-ALTER TABLE employees ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id); 
-
-ALTER TABLE departments ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id); 
-
-ALTER TABLE departments ADD FOREIGN KEY (location_id) REFERENCES locations(location_id); 
-
-ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id); 
-
-ALTER TABLE job_history ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id);
-
-ALTER TABLE job_history ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
-
-ALTER TABLE locations ADD FOREIGN KEY (country_id) REFERENCES countries(country_id);
+DECLARE
+   TYPE department IS TABLE OF departments%ROWTYPE INDEX BY PLS_INTEGER; 
+   dep_list department; 
+BEGIN
+    for i in 1..10
+    LOOP
+        select * into dep_list(i) from departments where department_id=i*10; 
+        dbms_output.put_line('Department name: ' || dep_list(i).department_name ||' department id:  '|| dep_list(i).department_id ||' manager id: '|| dep_list(i).manager_id);
+    end loop;
+end;
 
 
-SELECT last_name ||' '|| salary "WYNAGRODZENIE"
-    FROM employees
-    WHERE department_id = 20 OR department_id = 50
-    AND salary BETWEEN 2000 AND 7000
-    ORDER BY last_name;
+DECLARE
+    CURSOR c is select salary, last_name from employees where department_id=50;
+begin
+    for e in c loop
+        if e.salary > 3100 then
+            dbms_output.put_line(e.last_name||' nie dawać podwyżki');
+        else
+            dbms_output.put_line(e.last_name||' dać podwyżkę');
+        end if;
+    end loop;
+end;
 
 
-SELECT hire_date, last_name, &podaj_kolumnę
-    FROM employees
-    WHERE manager_id IS NOT NULL
-    AND EXTRACT (YEAR FROM hire_date) = 2005
-    ORDER BY &podaj_kolumnę_sort;
-    
-
-SELECT first_name||' '||last_name "IMIE_I_NAZWISKO", salary, phone_number
-    FROM employees
-    WHERE SUBSTR(last_name, 3 , 1) = 'e'
-    AND first_name LIKE '%&podaj_część_imienia%'
-    ORDER BY 1 DESC, 2;
-
-
-SELECT first_name, last_name, round(months_between(CURRENT_DATE, hire_date)) "PRZEPRACOWANE_MIESIACE",
-    CASE
-        WHEN round(months_between(CURRENT_DATE, hire_date)) < 150 THEN salary*0.1
-        WHEN round(months_between(CURRENT_DATE, hire_date)) >= 150 AND round(months_between(CURRENT_DATE, hire_date)) <=200 THEN salary*0.2
-        ELSE salary*0.3
-    END "wysokosc_dodatku"
-    FROM employees
-    ORDER BY "PRZEPRACOWANE_MIESIACE";
+Declare 
+    cursor c(od number, do1 number, litera varchar) is select salary, first_name, last_name from employees where salary between od and do1 and first_name like '%'||litera||'%';
+begin
+    dbms_output.put_line('1000-5000 a');
+    for e in c(1000,5000,'a') loop
+        dbms_output.put_line(e.first_name ||' ' || e.last_name);
+    end loop;
+    dbms_output.put_line('5000-20000 u');
+    for e in c(5000,20000,'u') loop
+        dbms_output.put_line(e.first_name ||' ' || e.last_name);
+    end loop;
+end;
 
 
-SELECT d.department_name, SUM(e.salary) "SUM_SALARY", round(AVG(e.salary)) "AVG_SALARY"
-    FROM departments d JOIN employees e ON d.department_id = e.department_id
-    GROUP BY d.department_name
-    HAVING MIN(e.salary)>5000;
-    
-    
-SELECT e.last_name, d.department_id, d.department_name, j.job_id
-    from employees e JOIN departments d ON d.department_id = e.department_id JOIN jobs j ON e.job_id = j.job_id JOIN locations l ON l.location_id = d.location_id
-    WHERE l.city='Toronto';
-    
+Create or replace Procedure add_jobs(job_id varchar, job_title varchar) as
+begin
+    insert into jobs (job_id,job_title) values(job_id, job_title);
+EXCEPTION
+   WHEN OTHERS THEN
+      dbms_output.put_line( SQLERRM );
+END add_jobs;
 
-SELECT e.last_name, e.first_name
-    FROM employees e
-    Where e.first_name='Jennifer' or e.department_id in (select e.department_id from employees e Where e.first_name='Jennifer');
-    
-    
-Select d.department_name
-    from departments d left join employees e on e.department_id = d.department_id
-    group by d.department_name
-    HAVING count(e.department_id) = 0;
-    
+execute add_jobs('tch', 'teacher');
 
-SELECT e.first_name||' '||e.last_name "IMIE_I_NAZWISKO", j.job_id, d.department_name, e.salary, jg.grade
-    from employees e join departments d on e.department_id = d.department_id join jobs j on j.job_id = e.job_id join job_grades jg on e.salary between jg.min_salary and jg.max_salary;
-    
-    
-select e.first_name||' '||e.last_name "IMIE_I_NAZWISKO", e.salary
-    from employees e
-    where (select AVG(e.salary) from employees e) < e.salary
-    order by e.salary desc;
-    
 
-select e.employee_id, e.first_name||' '||e.last_name "IMIE_I_NAZWISKO"
-    from employees e
-    where e.department_id in (select e.department_id from employees e where e.last_name like '%u%');
+Create or replace Procedure mod_jobs(job_idd varchar, job_titlee varchar)  as
+begin
+    update jobs set job_title=job_titlee where job_id=job_idd;
+    IF SQL%NOTFOUND THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No Jobs updated');
+    END IF;
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Zmodyfikowano nazwę dla id = ' || job_idd);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Błąd przy modyfikacji jobs');
+END mod_jobs;
+
+execute mod_jobs('t3ch', 'teacherer');
+
+
+Create or replace Procedure del_jobs(job_idd varchar)  as
+exp exception;
+begin
+    delete from jobs where job_id=job_idd;
+    IF SQL%NOTFOUND THEN
+        raise exp;
+    END IF;
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Usunięto job dla id = ' || job_idd);
+    EXCEPTION
+        WHEN exp THEN
+            DBMS_OUTPUT.PUT_LINE('No Jobs deleted');
+END del_jobs;
+
+execute del_jobs('tch');
+
+
+Create or replace Procedure get_salary(emp_id number)  as
+    zarobki Employees.salary%TYPE;
+    nazw Employees.last_name%TYPE;
+begin
+    select salary, last_name into zarobki, nazw from employees where employee_id=emp_id;
+    dbms_output.put_line('Pracownik #'||emp_id||' - '|| nazw ||' $'||zarobki);
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Błąd przy wyswietlaniu');
+END get_salary;
+
+execute get_salary(100);
+
+begin
+declare
+seqval number;
+begin
+    select max(employee_id)+1 into seqval from employees;
+    execute immediate('CREATE SEQUENCE emp_id INCREMENT BY 1 START WITH '||seqval||' nocycle cache 20');
+end;
+end;
+
+Create or replace Procedure create_emp(zarobki number, nazw varchar, mail varchar, jobid varchar)  as
+exp exception;
+begin
+IF zarobki > 20000 THEN
+    raise exp;
+END IF;
+insert into employees (employee_id, salary, last_name, email, hire_date, job_id) VALUES (emp_id.nextval, zarobki, nazw, mail, CURRENT_DATE, jobid);
+dbms_output.put_line(' Dodano pracownik z zarobkami $'||zarobki);
+commit;
+EXCEPTION
+    WHEN exp THEN
+        DBMS_OUTPUT.PUT_LINE('Zarobki większe niz 20000');
+END create_emp;
+
+execute create_emp(200300, 'Kowalski', 'kowalskiu@wp.pl', 'SH_CLERK');
