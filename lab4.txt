@@ -192,4 +192,206 @@ END;
 update jobs
     set min_salary = 20,
     max_salary = 202
-    where rownum = 1
+    where rownum = 1;
+    
+
+CREATE OR REPLACE PACKAGE hr_mgmt AS
+    FUNCTION get_job_name(
+        jobid jobs.job_id%TYPE
+    )
+    return varchar2;
+    FUNCTION get_yearly_salary(
+        empid employees.employee_id%TYPE
+    )
+    return number;
+    FUNCTION reformat_number(
+        p_numb varchar2
+    )
+    return varchar2;
+    FUNCTION cap_str(
+        str varchar2
+    )
+    return varchar2;
+    FUNCTION get_date(
+        pesel number
+    )
+    return date;
+    FUNCTION get_data(
+        v_country_name varchar2
+    )
+    return varchar2;
+end hr_mgmt;
+
+CREATE or replace PACKAGE BODY hr_mgmt as
+    FUNCTION get_job_name(
+        jobid jobs.job_id%TYPE
+    )
+    return varchar2
+    is
+        v_job_name jobs.job_title%TYPE;
+    begin
+        select job_title into v_job_name from jobs where job_id = jobid;
+        return v_job_name;
+    exception
+        when NO_DATA_FOUND then
+            DBMS_OUTPUT.PUT_LINE('Brak pracy z danym id');
+    end get_job_name;
+    
+    FUNCTION get_yearly_salary(
+    empid employees.employee_id%TYPE
+    )
+    return number
+    is
+        yearly_salary number;
+        cpct employees.commission_pct%type;
+    begin
+        select salary, commission_pct into yearly_salary, cpct from employees where employee_id = empid;
+        if cpct != null then
+            yearly_salary := yearly_salary*12+yearly_salary*cpct;
+        else
+            yearly_salary := yearly_salary*12;
+        end if;
+        return yearly_salary;
+    exception
+        when NO_DATA_FOUND then
+            DBMS_OUTPUT.PUT_LINE('Brak pracownika z danym id');
+    end get_yearly_salary;
+    
+    FUNCTION reformat_number(
+    p_numb varchar2
+    )
+    return varchar2
+    is
+        formated_numb varchar2(20);
+    begin
+        formated_numb := '(' || substr(p_numb, 1, 3) || ')' || substr(p_numb, 4, 12);
+        return formated_numb;
+    end reformat_number;
+    
+    FUNCTION cap_str(
+    str varchar2
+    )
+    return varchar2
+    is
+        r_str varchar2(50);
+    begin
+        r_str := upper(substr(str, 1, 1))||lower(substr(str, 2, length(str)-2))||upper(substr(str, -1, 1));
+        return r_str;
+    end cap_str;
+    
+    FUNCTION get_date(
+    pesel number
+    )
+    return date
+    is
+        r_date date;
+        r_pesel varchar2(20);
+    begin
+        r_pesel := to_char(pesel);
+        r_pesel := substr(r_pesel, 1,2)||'-'||substr(r_pesel, 3,2)||'-'||substr(r_pesel, 5,2);
+        if pesel > 24000000000 then
+            r_pesel := '19'||r_pesel;
+        else
+            r_pesel := '20'||r_pesel;
+        end if;
+        r_date := to_date(r_pesel,'yyyy-MM-DD');
+        return r_date;
+    end get_date;
+    
+    FUNCTION get_data(
+    v_country_name varchar2
+    )
+    return varchar2
+    is  
+        country number;
+        emp_numb number;
+        dep_numb number;
+    begin
+        select count(*) into country from countries where country_name = v_country_name;
+        if country = 0 then
+            raise NO_DATA_FOUND;
+        end if;
+        select count(d.department_id) into dep_numb
+            from departments d 
+            left join locations l on d.location_id = l.location_id 
+            left join countries c on c.country_id=l.country_id
+            where c.country_name = v_country_name;
+        select count(d.department_id) into emp_numb
+            from employees e
+            left join departments d on e.department_id = d.department_id
+            left join locations l on d.location_id = l.location_id 
+            left join countries c on c.country_id=l.country_id
+            where c.country_name = v_country_name;
+        return dep_numb||' i '||emp_numb;
+    exception
+        when NO_DATA_FOUND then
+            DBMS_OUTPUT.PUT_LINE('Brak kraju o takiej nazwie');
+    end get_data;
+
+end hr_mgmt;
+
+drop package hr_mgmt;
+
+begin
+    DBMS_OUTPUT.PUT_LINE( hr_mgmt.get_job_name('AD_VP'));
+    DBMS_OUTPUT.PUT_LINE( hr_mgmt.get_yearly_salary(145));
+    DBMS_OUTPUT.PUT_LINE( hr_mgmt.reformat_number('+12111222333'));
+    DBMS_OUTPUT.PUT_LINE( hr_mgmt.cap_str('aSDFg'));
+    DBMS_OUTPUT.PUT_LINE( to_char(hr_mgmt.get_date(22091804656),'yyyy-mm-dd'));
+    DBMS_OUTPUT.PUT_LINE( hr_mgmt.get_data('United States of America'));
+end;
+
+-----------------------------------
+Create or replace package region_mgmt as
+    Procedure add_regions(region_idd number, region_namee varchar2);
+    Procedure mod_regions(region_idd number, region varchar2);
+    Procedure del_regions(region_idd number);
+    Procedure get_name(region_idd number);
+end region_mgmt;
+CREATE or replace PACKAGE BODY region_mgmt as
+    Procedure add_regions(region_idd number, region_namee varchar2) as
+    begin
+        insert into regions (region_id,region_name) values(region_idd, region_namee);
+    EXCEPTION
+       WHEN OTHERS THEN
+          dbms_output.put_line( SQLERRM );
+    END add_regions;
+    
+    Procedure mod_regions(region_idd number, region varchar2)  as
+    begin
+        update regions set region_name=region where region_id=region_idd;
+        IF SQL%NOTFOUND THEN
+            RAISE_APPLICATION_ERROR(-20001, 'No Regions updated');
+        END IF;
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Zmodyfikowano nazwę dla id = ' || region_idd);
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                DBMS_OUTPUT.PUT_LINE('Błąd przy modyfikacji regions');
+    END mod_regions;
+    
+    Procedure del_regions(region_idd number)  as
+    exp exception;
+    begin
+        delete from regions where region_id=region_idd;
+        IF SQL%NOTFOUND THEN
+            raise exp;
+        END IF;
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Usunięto region dla id = ' || region_idd);
+        EXCEPTION
+            WHEN exp THEN
+                DBMS_OUTPUT.PUT_LINE('No Regions deleted');
+    END del_regions;
+    
+    Procedure get_name(region_idd number)  as
+        nazw Regions.region_name%TYPE;
+    begin
+        select region_name into nazw from regions where region_id=region_idd;
+        dbms_output.put_line('Region #'||region_idd||' - '|| nazw);
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Błąd przy wyswietlaniu');
+    END get_name;
+    
+end region_mgmt;
