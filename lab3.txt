@@ -1,3 +1,43 @@
+SET SERVEROUTPUT ON;
+DECLARE
+number_max INT;
+department_name departments.department_name%TYPE := 'EDUCATION';
+
+
+BEGIN
+    SELECT max(department_id)
+    INTO number_max 
+    FROM departments;
+    INSERT INTO departments VALUES (number_max+10, department_name, NULL, NULL);
+    update departments set location_id=3000
+    where departments.department_id = number_max+10;
+    DBMS_OUTPUT.PUT_LINE(number_max);
+END;
+
+
+
+CREATE TABLE nowa (pole varchar(50));
+
+DECLARE
+    i INT := 1;
+BEGIN
+    LOOP
+        exit when i > 10;
+        if i NOT IN (4, 6) THEN
+            INSERT INTO nowa values (i);
+        end if;
+        i := i + 1;
+    END loop;
+END;
+
+
+DECLARE
+    country countries%ROWTYPE;
+BEGIN
+    SELECT * into country from countries where country_id='CA';
+    DBMS_OUTPUT.PUT_LINE(country.country_name || ' ' || country.region_id);
+END;
+
 DECLARE
    TYPE department IS TABLE OF departments%ROWTYPE INDEX BY PLS_INTEGER; 
    dep_list department; 
