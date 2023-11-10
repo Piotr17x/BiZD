@@ -220,6 +220,7 @@ CREATE OR REPLACE PACKAGE hr_mgmt AS
         v_country_name varchar2
     )
     return varchar2;
+    Procedure get_employee_name(employee_idd employees.employee_id%type);
 end hr_mgmt;
 
 CREATE or replace PACKAGE BODY hr_mgmt as
@@ -327,7 +328,16 @@ CREATE or replace PACKAGE BODY hr_mgmt as
         when NO_DATA_FOUND then
             DBMS_OUTPUT.PUT_LINE('Brak kraju o takiej nazwie');
     end get_data;
-
+    
+    Procedure get_employee_name(employee_idd employees.employee_id%type)  as
+        nazw varchar2(50);
+    begin
+        select first_name||' '||last_name into nazw from employees where employee_id=employee_idd;
+        dbms_output.put_line('Pracownik #'||employee_idd||' - '|| nazw);
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Błąd przy wyswietlaniu');
+    END get_employee_name;
 end hr_mgmt;
 
 drop package hr_mgmt;
@@ -339,6 +349,7 @@ begin
     DBMS_OUTPUT.PUT_LINE( hr_mgmt.cap_str('aSDFg'));
     DBMS_OUTPUT.PUT_LINE( to_char(hr_mgmt.get_date(22091804656),'yyyy-mm-dd'));
     DBMS_OUTPUT.PUT_LINE( hr_mgmt.get_data('United States of America'));
+    hr_mgmt.get_employee_name(102);
 end;
 
 -----------------------------------
@@ -347,6 +358,7 @@ Create or replace package region_mgmt as
     Procedure mod_regions(region_idd number, region varchar2);
     Procedure del_regions(region_idd number);
     Procedure get_name(region_idd number);
+    FUNCTION get_region_name(regionid regions.region_id%TYPE) return varchar2;
 end region_mgmt;
 CREATE or replace PACKAGE BODY region_mgmt as
     Procedure add_regions(region_idd number, region_namee varchar2) as
@@ -394,4 +406,24 @@ CREATE or replace PACKAGE BODY region_mgmt as
                 DBMS_OUTPUT.PUT_LINE('Błąd przy wyswietlaniu');
     END get_name;
     
+    FUNCTION get_region_name(
+        regionid regions.region_id%TYPE
+    )
+    return varchar2
+    is
+        v_region_name regions.region_name%TYPE;
+    begin
+        select region_name into v_region_name from regions where region_id = regionid;
+        return v_region_name;
+    exception
+        when NO_DATA_FOUND then
+            DBMS_OUTPUT.PUT_LINE('Brak regionu z danym id');
+    end get_region_name;
+    
 end region_mgmt;
+
+begin
+    DBMS_OUTPUT.PUT_LINE( region_mgmt.get_region_name(1));
+    region_mgmt.get_name(1);
+    region_mgmt.del_regions(9);
+end;
