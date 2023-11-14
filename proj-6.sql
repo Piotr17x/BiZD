@@ -8,7 +8,7 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Dodano algorytm z id: '||alg_id||' o nazwie: '|| alg_name);
     EXCEPTION
         WHEN DUP_VAL_ON_INDEX THEN
-        DBMS_OUTPUT.PUT_LINE('Algorytm z id: '||alg_id||' ju¿ istnieje.');
+        DBMS_OUTPUT.PUT_LINE('Algorytm z id: '||alg_id||' juÂ¿ istnieje.');
 END;
 
 CREATE OR REPLACE PROCEDURE change_algorithm_name(
@@ -21,7 +21,7 @@ BEGIN
     IF SQL%NOTFOUND THEN
         RAISE no_rows_affected;
     END IF;
-    DBMS_OUTPUT.PUT_LINE('Zmieniono nazwê algorytmu z id: '||alg_id||' na: '|| alg_name);
+    DBMS_OUTPUT.PUT_LINE('Zmieniono nazwÃª algorytmu z id: '||alg_id||' na: '|| alg_name);
     EXCEPTION
         WHEN no_rows_affected THEN
             DBMS_OUTPUT.PUT_LINE('Algorytm z id: '||alg_id||' nie istnieje.');
@@ -37,7 +37,7 @@ BEGIN
         RAISE no_rows_affected;
     END IF;
     COMMIT;
-    DBMS_OUTPUT.PUT_LINE('Usuniêto algorytm z id: '||alg_id);
+    DBMS_OUTPUT.PUT_LINE('UsuniÃªto algorytm z id: '||alg_id);
     EXCEPTION
         WHEN no_rows_affected THEN
             DBMS_OUTPUT.PUT_LINE('Algorytm z id: '||alg_id||' nie istnieje.');
@@ -75,3 +75,12 @@ commit;
 delete from simulations where sim_id in (75);
 commit;
 /*6c*/
+CREATE TABLE parameters_logs (ids number GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1), user_ varchar(50), parameter_name varchar(50), czas_zmiany timestamp);
+Create or replace TRIGGER parameters_logger
+    after insert
+    on parameters
+    for each row
+begin
+    insert into parameters_logs (user_, parameter_name, czas_zmiany) values ((select user from dual), :new.parameter_id, current_timestamp);
+end;
+INSERT INTO parameters (parameter_id, algorithm_id) values ('asdas2da23w', 'MCTS');
