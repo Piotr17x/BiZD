@@ -83,4 +83,95 @@ Create or replace TRIGGER parameters_logger
 begin
     insert into parameters_logs (user_, parameter_name, czas_zmiany) values ((select user from dual), :new.parameter_id, current_timestamp);
 end;
-INSERT INTO parameters (parameter_id, algorithm_id) values ('asdas2da23w', 'MCTS');
+/*6e*/
+
+CREATE OR REPLACE PROCEDURE get_vs_stats(
+player_one parameters.parameter_id%TYPE,
+player_two parameters.parameter_id%TYPE
+) as
+no_parameters_found exception;
+player_one_wins number;
+player_two_wins number;
+draws number;
+p1_exists number;
+p2_exists number;
+BEGIN
+    select count(parameter_id) into p1_exists from parameters where parameter_id=player_one;
+    select count(parameter_id) into p2_exists from parameters where parameter_id=player_two;
+    if p1_exists != p2_exists and p1_exists != 1 then
+        raise no_parameters_found;
+    end if;
+    SELECT count(sim_id) into player_one_wins from simulations
+    where 
+    red_player=player_one and blue_player=player_two
+    and outcome=player_one
+    or blue_player=player_one and red_player=player_two
+    and outcome=player_one;
+    
+    SELECT count(sim_id) into player_two_wins from simulations
+    where 
+    red_player=player_one and blue_player=player_two
+    and outcome=player_two
+    or blue_player=player_one and red_player=player_two
+    and outcome=player_two;
+    
+    SELECT count(sim_id) into draws from simulations
+    where 
+    red_player=player_one and blue_player=player_two
+    and outcome='draw'
+    or blue_player=player_one and red_player=player_two
+    and outcome='draw';
+    DBMS_OUTPUT.PUT_LINE('Statystyki gier '|| player_one ||' vs '|| player_two);
+    DBMS_OUTPUT.PUT_LINE(player_one||': '|| player_one_wins);
+    DBMS_OUTPUT.PUT_LINE(player_two||': '|| player_two_wins);
+    DBMS_OUTPUT.PUT_LINE('remisów: '|| draws);
+EXCEPTION
+    WHEN no_parameters_found THEN
+        DBMS_OUTPUT.PUT_LINE('Podana nazwa jednego z parametrów nie istnieje.');
+END;
+
+begin
+    get_vs_stats('MCTS_BB_1_0_n_2', 'MCTS_BB_1_0_n_1');
+end;
+
+
+CREATE OR REPLACE FUNCTION get_winrate(
+player_one parameters.parameter_id%TYPE,
+player_two parameters.parameter_id%TYPE
+)
+return number
+is
+    no_parameters_found exception;
+    winrate number;
+    draws number;
+    p1_exists number;
+    p2_exists number;
+BEGIN
+    select count(parameter_id) into p1_exists from parameters where parameter_id=player_one;
+    select count(parameter_id) into p2_exists from parameters where parameter_id=player_two;
+    if p1_exists != p2_exists and p1_exists != 1 then
+        raise no_parameters_found;
+    end if;
+    SELECT count(sim_id) into winrate from simulations
+    where 
+    red_player=player_one and blue_player=player_two
+    and outcome=player_one
+    or blue_player=player_one and red_player=player_two
+    and outcome=player_one;
+    
+    SELECT count(sim_id) into draws from simulations
+    where 
+    red_player=player_one and blue_player=player_two
+    and outcome='draw'
+    or blue_player=player_one and red_player=player_two
+    and outcome='draw';
+    winrate:=winrate + draws/2;
+EXCEPTION
+    WHEN no_parameters_found THEN
+        DBMS_OUTPUT.PUT_LINE('Podana nazwa jednego z parametrów nie istnieje.');
+END;
+
+
+begin
+    DBMS_OUTPUT.PUT_LINE('Gracz MCTS_BB_1_0_n_2 ma winrate vs MCTS_BB_1_0_n_1 wynoszący ' || get_vs_stats('MCTS_BB_1_0_n_2', 'MCTS_BB_1_0_n_1'));
+end;
