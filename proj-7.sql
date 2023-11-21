@@ -44,10 +44,10 @@ BEGIN
     select distinct(outcome) BULK COLLECT into opponents from simulations where red_player=player and outcome != 'draw' or blue_player=player and outcome != 'draw';
     
     FOR i IN 1..opponents.COUNT LOOP
-        DBMS_OUTPUT.PUT_LINE(opponents(i));
         if opponents(i) = player then
-         continue;
+            continue;
         end if;
+        DBMS_OUTPUT.PUT_LINE(opponents(i));
         insert into simulation_vs_stats (primary_parameter, secondary_parameter, wins, loses, draws, winrate)
         values (
         player,
