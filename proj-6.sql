@@ -142,7 +142,9 @@ player_two parameters.parameter_id%TYPE
 return number
 is
     no_parameters_found exception;
+    no_simulations exception;
     winrate number;
+    all_matches number:=1;
     draws number;
     p1_exists number;
     p2_exists number;
@@ -159,19 +161,47 @@ BEGIN
     or blue_player=player_one and red_player=player_two
     and outcome=player_one;
     
+    SELECT count(sim_id) into all_matches from simulations
+    where 
+    red_player=player_one and blue_player=player_two
+    or blue_player=player_one and red_player=player_two;
+    
     SELECT count(sim_id) into draws from simulations
     where 
     red_player=player_one and blue_player=player_two
     and outcome='draw'
     or blue_player=player_one and red_player=player_two
     and outcome='draw';
-    winrate:=winrate + draws/2;
+    if all_matches < 1 then
+        raise no_simulations;
+    end if;
+    winrate:=(winrate + draws/2)/all_matches*100;
+    return winrate;
 EXCEPTION
     WHEN no_parameters_found THEN
         DBMS_OUTPUT.PUT_LINE('Podana nazwa jednego z parametrów nie istnieje.');
+    WHEN no_simulations THEN
+        DBMS_OUTPUT.PUT_LINE('Brak wykonanych symulacji algorytmów z tymi parametrami.');
 END;
 
 
 begin
-    DBMS_OUTPUT.PUT_LINE('Gracz MCTS_BB_1_0_n_2 ma winrate vs MCTS_BB_1_0_n_1 wynoszący ' || get_vs_stats('MCTS_BB_1_0_n_2', 'MCTS_BB_1_0_n_1'));
+    DBMS_OUTPUT.PUT_LINE('Gracz MCTS_BB_1_0_n_2 ma winrate vs MCTS_BB_1_0_n_1 wynoszący ' || get_winrate('MCTS_BB_1_0_n_2', 'MCTS_BB_1_0_n_1') ||'%');
+end;
+
+/*6f
+wyzwalacz blokujący dodawanie symulacji gdzie liczba tur > 29
+*/
+
+CREATE or replace TRIGGER sim_turn_checker
+  BEFORE insert ON simulations
+  FOR EACH ROW
+BEGIN
+  if :new.turn_cnt > 29 or :new.turn_cnt < 1 then
+    raise_application_error(-20000, 'niepoprawna liczba tur');
+  end if;
+END;
+
+Begin
+    INSERT INTO simulations (outcome, red_player, blue_player, turn_cnt) values ('draw', 'asdas2da2w', 'asdas2da2w', 30);
 end;
