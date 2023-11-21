@@ -30,6 +30,7 @@ player parameters.parameter_id%TYPE
 ) as
 TYPE var_array IS VARRAY (10) OF simulation_vs_stats.primary_parameter%type;
 opponents var_array;
+player_data parameters%rowtype;
 parameter_not_found exception;
 player_exists number;
 BEGIN
@@ -40,7 +41,8 @@ BEGIN
     
     delete from simulation_vs_stats where primary_parameter = player;
     commit;
-    
+    select * into player_data from parameters where parameter_id = player;
+    DBMS_OUTPUT.PUT_LINE(player_data.c);
     select distinct(outcome) BULK COLLECT into opponents from simulations where red_player=player and outcome != 'draw' or blue_player=player and outcome != 'draw';
     
     FOR i IN 1..opponents.COUNT LOOP
