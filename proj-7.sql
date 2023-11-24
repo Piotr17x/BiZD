@@ -83,3 +83,63 @@ END;
 begin
     insert_vs_stats('MCTS_BB_2_0_n_3');
 end;
+
+SELECT min(turn_cnt) from simulations;
+
+
+CREATE OR REPLACE PROCEDURE insert_turn_stats(
+player parameters.parameter_id%TYPE
+) as
+parameter_not_found exception;
+player_exists number;
+player_data parameters%rowtype;
+total Number;
+wins NUMBER;
+draws NUMBER;
+winratio Number;
+BEGIN
+    select count(parameter_id) into player_exists from parameters where parameter_id=player;
+    if player_exists != 1 then
+        raise parameter_not_found;
+    end if;
+    
+    delete from simulation_turn_stats where parameter = player;
+    commit;
+    select * into player_data from parameters where parameter_id = player;
+    DBMS_OUTPUT.PUT_LINE(player_data.c);
+    
+    FOR i IN 1..29 LOOP
+        select count(sim_id) into total from simulations where 
+        (red_player=player or blue_player=player)
+        and turn_cnt=i;
+        if total = 0 then
+            continue;
+        end if;
+        select count(sim_id) into wins from simulations where 
+        (red_player=player or blue_player=player)
+        and turn_cnt=i and outcome=player;
+        select count(sim_id) into draws from simulations where 
+        (red_player=player or blue_player=player)
+        and turn_cnt=i and outcome='draw';
+        winratio:=ROUND((wins+draws*0.5)/total,2);
+        insert into simulation_turn_stats (parameter, turn_cnt, wins, loses, draws, winrate)
+        values (
+        player,
+        i,
+        wins,
+        (SELECT count(sim_id) from simulations
+        where 
+        (red_player=player or blue_player=player)
+        and outcome!=player and outcome!='draw' and turn_cnt=i),
+        draws,
+        winratio
+        );
+    END LOOP;
+EXCEPTION
+    WHEN parameter_not_found THEN
+        DBMS_OUTPUT.PUT_LINE('Podana nazwa parametru nie istnieje.');
+END;
+
+begin
+    insert_turn_stats('MCTS_BB_2_0_n_0,1');
+end;
