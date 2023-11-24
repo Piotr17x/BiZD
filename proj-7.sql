@@ -7,7 +7,11 @@ secondary_parameter VARCHAR2(50),
 wins number,
 loses number,
 draws number,
-winrate number
+winrate number,
+e_greedy number,
+c number,
+sim_depth number,
+playout number
 );
 
 CREATE TABLE simulation_turn_stats(
@@ -28,7 +32,7 @@ INSERT INTO simulation_turn_stats (parameter) values ('draw');
 CREATE OR REPLACE PROCEDURE insert_vs_stats(
 player parameters.parameter_id%TYPE
 ) as
-TYPE var_array IS VARRAY (10) OF simulation_vs_stats.primary_parameter%type;
+TYPE var_array IS VARRAY (50) OF simulation_vs_stats.primary_parameter%type;
 opponents var_array;
 player_data parameters%rowtype;
 parameter_not_found exception;
@@ -41,16 +45,15 @@ BEGIN
     
     delete from simulation_vs_stats where primary_parameter = player;
     commit;
-    select * into player_data from parameters where parameter_id = player;
-    DBMS_OUTPUT.PUT_LINE(player_data.c);
+    
     select distinct(outcome) BULK COLLECT into opponents from simulations where red_player=player and outcome != 'draw' or blue_player=player and outcome != 'draw';
     
     FOR i IN 1..opponents.COUNT LOOP
         if opponents(i) = player then
             continue;
         end if;
-        DBMS_OUTPUT.PUT_LINE(opponents(i));
-        insert into simulation_vs_stats (primary_parameter, secondary_parameter, wins, loses, draws, winrate)
+        select * into player_data from parameters where parameter_id = opponents(i);
+        insert into simulation_vs_stats (primary_parameter, secondary_parameter, wins, loses, draws, winrate, e_greedy, c, sim_depth, playout)
         values (
         player,
         opponents(i),
@@ -72,7 +75,11 @@ BEGIN
         and outcome='draw'
         or blue_player=opponents(i) and red_player=player
         and outcome='draw'),
-        get_winrate(player,opponents(i))
+        get_winrate(player,opponents(i)),
+        player_data.e_greedy,
+        player_data.c,
+        player_data.sim_depth,
+        player_data.playout_number
         );
     END LOOP;
 EXCEPTION
@@ -81,7 +88,7 @@ EXCEPTION
 END;
 
 begin
-    insert_vs_stats('MCTS_BB_2_0_n_3');
+    insert_vs_stats('MCTS_BB_2_0_n_0,1');
 end;
 
 SELECT min(turn_cnt) from simulations;
