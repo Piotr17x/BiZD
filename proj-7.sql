@@ -75,7 +75,7 @@ BEGIN
         and outcome='draw'
         or blue_player=opponents(i) and red_player=player
         and outcome='draw'),
-        get_winrate(player,opponents(i)),
+        ROUND(get_winrate(player,opponents(i)), 2),
         player_data.e_greedy,
         player_data.c,
         player_data.sim_depth,
