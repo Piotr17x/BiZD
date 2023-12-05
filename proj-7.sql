@@ -11,7 +11,13 @@ winrate number,
 e_greedy number,
 c number,
 sim_depth number,
-playout number
+playout number,
+simulation_number number generated always as (wins+loses+draws) virtual,
+first_winrate number generated always as ((first_wins+first_draws*0.5)/(first_wins+first_loses+first_draws)*100) virtual,
+second_wins number generated always as (wins-first_wins) virtual,
+second_loses number generated always as (loses-first_loses) virtual,
+second_draws number generated always as (draws-first_draws) virtual,
+second_winrate number generated always as (((wins-first_wins)+(draws-first_draws)*0.5)/((wins-first_wins)+(loses-first_loses)+(draws-first_draws))*100) virtual
 );
 
 CREATE TABLE simulation_turn_stats(
@@ -29,7 +35,7 @@ INSERT INTO simulation_vs_stats (primary_parameter) values ('draw');
 INSERT INTO simulation_turn_stats (parameter) values ('draw');
 
 
-CREATE OR REPLACE PROCEDURE insert_vs_stats(
+create or replace PROCEDURE insert_vs_stats(
 player parameters.parameter_id%TYPE
 ) as
 TYPE var_array IS VARRAY (50) OF simulation_vs_stats.primary_parameter%type;
@@ -37,23 +43,58 @@ opponents var_array;
 player_data parameters%rowtype;
 parameter_not_found exception;
 player_exists number;
+
+iter number;
+help_number number;
+f_wins number;
+f_loses number;
+f_draws number;
 BEGIN
     select count(parameter_id) into player_exists from parameters where parameter_id=player;
     if player_exists != 1 then
         raise parameter_not_found;
     end if;
-    
+
     delete from simulation_vs_stats where primary_parameter = player;
     commit;
-    
+
     select distinct(outcome) BULK COLLECT into opponents from simulations where red_player=player and outcome != 'draw' or blue_player=player and outcome != 'draw';
-    
+
     FOR i IN 1..opponents.COUNT LOOP
         if opponents(i) = player then
             continue;
         end if;
         select * into player_data from parameters where parameter_id = opponents(i);
-        insert into simulation_vs_stats (primary_parameter, secondary_parameter, wins, loses, draws, winrate, e_greedy, c, sim_depth, playout)
+        
+        f_wins:=0;
+        f_loses:=0;
+        f_draws:=0;
+        
+        SELECT count(sim_id) into help_number from simulations where red_player = player and blue_player = opponents(i);
+        for sim in (SELECT * from simulations where red_player = player and blue_player = opponents(i) order by sim_id fetch first (help_number/2) rows only)
+        loop
+            if sim.outcome = player then
+                f_wins:=f_wins+1;
+            elsif sim.outcome = 'draw' then
+                f_draws:=f_draws+1;
+            else 
+                f_loses:=f_loses+1;
+            end if;
+        end LOOP;
+        
+        SELECT count(sim_id) into help_number from simulations where blue_player = player and red_player = opponents(i);
+        for sim in (SELECT * from simulations where blue_player = player and red_player = opponents(i) order by sim_id desc fetch first (help_number/2) rows only)
+        loop
+            if sim.outcome = player then
+                f_wins:=f_wins+1;
+            elsif sim.outcome = 'draw' then
+                f_draws:=f_draws+1;
+            else 
+                f_loses:=f_loses+1;
+            end if;
+        end LOOP;
+        
+        insert into simulation_vs_stats (primary_parameter, secondary_parameter, wins, loses, draws, winrate, e_greedy, c, sim_depth, playout, first_wins, first_loses, first_draws)
         values (
         player,
         opponents(i),
@@ -79,7 +120,10 @@ BEGIN
         player_data.e_greedy,
         player_data.c,
         player_data.sim_depth,
-        player_data.playout_number
+        player_data.playout_number,
+        f_wins,
+        f_loses,
+        f_draws
         );
     END LOOP;
 EXCEPTION
