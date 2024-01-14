@@ -1,4 +1,6 @@
-/*6a*/
+/*6a 
+Dodawanie, usuwanie, aktualizacja rekordów
+*/
 CREATE OR REPLACE PROCEDURE add_algorithm(
     alg_id algorithms.algorithm_id%TYPE,
     alg_name algorithms.algorithm_name%TYPE
@@ -49,7 +51,9 @@ begin
     delete_algorithm('MCTSA');
 end;
 
-/*6b*/
+/*6b 
+Archiwizacja usuniętych danych
+*/
 CREATE TABLE simulations_archive (
 sim_id NUMBER PRIMARY KEY,
 outcome VARCHAR2(50),
@@ -74,7 +78,9 @@ INSERT INTO simulations (outcome, red_player, blue_player, turn_cnt) values ('MC
 commit;
 delete from simulations where sim_id in (75);
 commit;
-/*6c*/
+/*6c 
+Logowanie informacji do tabeli
+*/
 CREATE TABLE parameters_logs (ids number GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1), user_ varchar(50), parameter_name varchar(50), czas_zmiany timestamp);
 Create or replace TRIGGER parameters_logger
     after insert
@@ -83,7 +89,9 @@ Create or replace TRIGGER parameters_logger
 begin
     insert into parameters_logs (user_, parameter_name, czas_zmiany) values ((select user from dual), :new.parameter_id, current_timestamp);
 end;
-/*6e*/
+/*6e 
+Procedury, funkcje z parametrami, możliwe parametry domyślne
+*/
 
 CREATE OR REPLACE PROCEDURE get_vs_stats(
 player_one parameters.parameter_id%TYPE,
@@ -189,7 +197,7 @@ begin
     DBMS_OUTPUT.PUT_LINE('Gracz MCTS_BB_1_0_n_2 ma winrate vs MCTS_BB_1_0_n_1 wynoszący ' || get_winrate('MCTS_BB_1_0_n_2', 'MCTS_BB_1_0_n_1') ||'%');
 end;
 
-/*6f
+/*6f Sprawdzanie poprawności dodawanych danych
 wyzwalacz blokujący dodawanie symulacji gdzie liczba tur > 29
 */
 
